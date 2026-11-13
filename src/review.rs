@@ -108,8 +108,7 @@ fn merge(merger: &Agent, scope: Scope, reviews: &[(String, String)], rejected: &
     if !rejected.is_empty() {
         prompt.push_str(&format!(
             "\n## Findings already rejected in earlier rounds\n\n\
-             These were judged not to be real problems. Drop findings that restate them, unless the code has \
-             changed in a way that makes them valid now.\n\n{rejected}"
+             These were judged not to be real problems. Drop every finding that restates one of them.\n\n{rejected}"
         ));
     }
 

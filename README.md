@@ -43,7 +43,7 @@ Inside a VS Code terminal, the formatted report (`report.md`) also opens in the 
 "workbench.editorAssociations": { "**/.git/cr/**/report.md": "vscode.markdown.preview.editor" }
 ```
 
-`review` and `fix` refuse to run on a dirty working tree. Raw reviewer output is kept in `.git/cr/<pr>/` (`.git/cr/local/` for `cr local`).
+`review` and `fix` refuse to run on a dirty working tree. Raw reviewer output is kept in `.git/cr/<pr>/` (`.git/cr/local/` for `cr local`, `.git/cr/local/round-<n>/` for `cr loop`).
 
 ## Configuration
 

@@ -12,7 +12,7 @@ mod status;
 mod target;
 
 use anyhow::{Result, bail};
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 use config::{Agent, Config, Tool};
 use host::{Host, Pr};
@@ -55,25 +55,17 @@ enum Command {
     /// nothing is committed, pushed, or posted.
     #[command(visible_alias = "l")]
     Local {
-        /// Branch or ref to compare against (default: origin's default branch, else main/master).
-        #[arg(long)]
-        base: Option<String>,
+        #[command(flatten)]
+        local: LocalArgs,
         /// Only review; don't fix.
         #[arg(long)]
         no_fix: bool,
-        /// Only run the configured reviewers using these tools.
-        #[arg(long, value_delimiter = ',')]
-        reviewers: Vec<Tool>,
     },
     /// Repeat `local` (review, then fix) until a review finds nothing valid. Each round
     /// costs about as much as one `cr local`; nothing is committed, pushed, or posted.
     Loop {
-        /// Branch or ref to compare against (default: origin's default branch, else main/master).
-        #[arg(long)]
-        base: Option<String>,
-        /// Only run the configured reviewers using these tools.
-        #[arg(long, value_delimiter = ',')]
-        reviewers: Vec<Tool>,
+        #[command(flatten)]
+        local: LocalArgs,
         /// Stop after this many review → fix rounds.
         #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(1..))]
         max_rounds: u32,
@@ -90,6 +82,17 @@ enum Command {
     },
 }
 
+/// Options shared by `local` and `loop`.
+#[derive(Args)]
+struct LocalArgs {
+    /// Branch or ref to compare against (default: origin's default branch, else main/master).
+    #[arg(long)]
+    base: Option<String>,
+    /// Only run the configured reviewers using these tools.
+    #[arg(long, value_delimiter = ',')]
+    reviewers: Vec<Tool>,
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     if let Command::Init { repo, force } = cli.command {
@@ -104,14 +107,8 @@ fn main() -> Result<()> {
     let config = Config::load(&root)?;
 
     match cli.command {
-        Command::Local { base, no_fix, reviewers } => {
-            let reviewers = select_reviewers(&config, &reviewers)?;
-            local::run(&config, local::Options { base, fix: !no_fix, reviewers, max_rounds: 1 })
-        }
-        Command::Loop { base, reviewers, max_rounds } => {
-            let reviewers = select_reviewers(&config, &reviewers)?;
-            local::run(&config, local::Options { base, fix: true, reviewers, max_rounds })
-        }
+        Command::Local { local, no_fix } => run_local(&config, local, !no_fix, None),
+        Command::Loop { local, max_rounds } => run_local(&config, local, true, Some(max_rounds)),
         Command::Review { target, no_comment, reviewers } => {
             let reviewers = select_reviewers(&config, &reviewers)?;
             let host = host::detect(&config)?;
@@ -127,6 +124,11 @@ fn main() -> Result<()> {
         }
         Command::Init { .. } => unreachable!("handled above"),
     }
+}
+
+fn run_local(config: &Config, args: LocalArgs, fix: bool, max_rounds: Option<u32>) -> Result<()> {
+    let reviewers = select_reviewers(config, &args.reviewers)?;
+    local::run(config, local::Options { base: args.base, fix, reviewers, max_rounds })
 }
 
 /// The configured reviewers, limited to `tools` when any are given.
