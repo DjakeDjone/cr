@@ -91,6 +91,8 @@ pub fn apply(config: &Config, scope: Scope, items: &[Item], listing: &str) -> Re
          3. If you cannot fix it safely, mark it `skipped` and explain in `note`.\n\n\
          Then run the project's build, tests and linters (whatever this repository uses) and report every \
          command in `checks`, once, with its final result. If a check fails because of your changes, fix it and rerun. \
+         Leave out a check that also fails without your changes (e.g. `cargo fmt --check` in a repository that was \
+         never formatted): it is not yours to fix and must not block this run. \
          Do not commit or push.\n\
          Answer only with JSON matching the schema, with one `results` entry per item.\n\n{listing}",
         scope.describe()
