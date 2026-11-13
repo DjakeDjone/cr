@@ -65,6 +65,19 @@ enum Command {
         #[arg(long, value_delimiter = ',')]
         reviewers: Vec<Tool>,
     },
+    /// Repeat `local` (review, then fix) until a review finds nothing valid. Each round
+    /// costs about as much as one `cr local`; nothing is committed, pushed, or posted.
+    Loop {
+        /// Branch or ref to compare against (default: origin's default branch, else main/master).
+        #[arg(long)]
+        base: Option<String>,
+        /// Only run the configured reviewers using these tools.
+        #[arg(long, value_delimiter = ',')]
+        reviewers: Vec<Tool>,
+        /// Stop after this many review → fix rounds.
+        #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u32).range(1..))]
+        max_rounds: u32,
+    },
     /// Write a config file with the default settings.
     #[command(visible_alias = "init-config")]
     Init {
@@ -93,7 +106,11 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Local { base, no_fix, reviewers } => {
             let reviewers = select_reviewers(&config, &reviewers)?;
-            local::run(&config, local::Options { base, fix: !no_fix, reviewers })
+            local::run(&config, local::Options { base, fix: !no_fix, reviewers, max_rounds: 1 })
+        }
+        Command::Loop { base, reviewers, max_rounds } => {
+            let reviewers = select_reviewers(&config, &reviewers)?;
+            local::run(&config, local::Options { base, fix: true, reviewers, max_rounds })
         }
         Command::Review { target, no_comment, reviewers } => {
             let reviewers = select_reviewers(&config, &reviewers)?;
